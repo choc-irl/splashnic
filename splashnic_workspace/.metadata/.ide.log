@@ -1921,3 +1921,5 @@
 2023-05-04 12:21:21,760 [INFO] ProjectBuilder:4183 - Time for Generating toolchain IDE Files: 1852mS.
 2023-05-04 12:21:21,761 [INFO] ProjectBuilder:2785 - Time for Copy CMSIS : 1mS.
 2023-05-04 12:21:21,765 [INFO] ProjectBuilder:2785 - Time for Copy CMSIS : 0mS.
+2023-05-04 15:08:29,419 [INFO] NvicIntPanel:96 - NVIC parent = com.st.microxplorer.plugins.ip.nvic.MultiNvicIntPanel[,0,0,0x0,invalid,layout=javax.swing.BoxLayout,alignmentX=0.0,alignmentY=0.0,border=,flags=9,maximumSize=,minimumSize=,preferredSize=]
+2023-05-04 15:08:46,247 [INFO] Gpio:254 - dependency for GPIO [SYS, TIM1, USART2]
