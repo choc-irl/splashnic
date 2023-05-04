@@ -1,27 +1,28 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2023 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define MAX_LED 8
+#define USE_BRIGHTNESS 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -40,23 +43,121 @@
 
 /* Private variables ---------------------------------------------------------*/
  TIM_HandleTypeDef htim1;
+DMA_HandleTypeDef hdma_tim1_ch1;
 
 UART_HandleTypeDef huart2;
 
 PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
+uint16_t msg_size=0;
+uint8_t msg_buffer[60];
+uint32_t msg_TO=100;//time out in ms
 
+
+// LED
+uint8_t LED_Data[MAX_LED][4];
+uint8_t LED_Mod[MAX_LED][4];  // for brightness
+
+uint16_t pwmData[(24*MAX_LED)+50];
+uint16_t datasentflag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_TIM1_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USB_PCD_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
+#ifdef __GNUC__
+/* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
+   set to 'Yes') calls __io_putchar() */
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
+PUTCHAR_PROTOTYPE
+{
+	/* Place your implementation of fputc here */
+	/* e.g. write a character to the USART2 and Loop until the end of transmission */
+	HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
 
+	return ch;
+}
+
+void Set_LED (int LEDnum, int Red, int Green, int Blue)
+{
+	LED_Data[LEDnum][0] = LEDnum;
+	LED_Data[LEDnum][1] = Green;
+	LED_Data[LEDnum][2] = Red;
+	LED_Data[LEDnum][3] = Blue;
+}
+
+#define PI 3.14159265
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+{
+	HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
+	datasentflag=1;
+}
+void Set_Brightness (int brightness)  // 0-45
+{
+#if USE_BRIGHTNESS
+
+	if (brightness > 45) brightness = 45;
+	for (int i=0; i<MAX_LED; i++)
+	{
+		LED_Mod[i][0] = LED_Data[i][0];
+		for (int j=1; j<4; j++)
+		{
+			float angle = 90-brightness;  // in degrees
+			angle = angle*PI / 180;  // in rad
+			LED_Mod[i][j] = (LED_Data[i][j])/(tan(angle));
+		}
+	}
+
+#endif
+
+}
+void WS2812_Send (void)
+{
+	uint32_t indx=0;
+	uint32_t color;
+
+
+	for (int i= 0; i<MAX_LED; i++)
+	{
+#if USE_BRIGHTNESS
+		color = ((LED_Mod[i][1]<<16) | (LED_Mod[i][2]<<8) | (LED_Mod[i][3]));
+#else
+		color = ((LED_Data[i][1]<<16) | (LED_Data[i][2]<<8) | (LED_Data[i][3]));
+#endif
+
+		for (int i=23; i>=0; i--)
+		{
+			if (color&(1<<i))
+			{
+				pwmData[indx] = 141;  // 2/3 of 90
+			}
+
+			else pwmData[indx] = 70;  // 1/3 of 90
+
+			indx++;
+		}
+
+	}
+
+	for (int i=0; i<50; i++)
+	{
+		pwmData[indx] = 0;
+		indx++;
+	}
+
+	HAL_TIM_PWM_Start_DMA(&htim1, TIM_CHANNEL_1, (uint32_t *)pwmData, indx);
+	while (!datasentflag){};
+	datasentflag = 0;
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -93,20 +194,47 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_TIM1_Init();
+  MX_DMA_Init();
   MX_USB_PCD_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+	Set_LED(0, 255, 0, 0);
+	Set_LED(1, 0, 255, 0);
+	Set_LED(2, 0, 0, 255);
 
+	Set_LED(3, 46, 89, 128);
+
+	Set_LED(4, 156, 233, 100);
+	Set_LED(5, 102, 0, 235);
+	Set_LED(6, 47, 38, 77);
+
+	Set_LED(7, 255, 200, 0);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1)
+	{
+		msg_size=sprintf((char*) (msg_buffer),"toto \r\n");
+		HAL_UART_Transmit(&huart2, msg_buffer, msg_size, msg_TO);
+		printf("tit %d \r\n",32);
+		for (int i=0; i<46; i++)
+			  {
+				  Set_Brightness(i);
+				  WS2812_Send();
+				  HAL_Delay (50);
+			  }
+
+			  for (int i=45; i>=0; i--)
+			  {
+				  Set_Brightness(i);
+				  WS2812_Send();
+				  HAL_Delay (50);
+			  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -180,7 +308,7 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 230;
+  htim1.Init.Period = 213;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -321,6 +449,23 @@ static void MX_USB_PCD_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -356,11 +501,11 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1)
+	{
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -375,7 +520,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+	/* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
