@@ -53,10 +53,12 @@ DMA_HandleTypeDef hdma_usart1_rx;
 PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
-uint16_t msg_size=0;
-uint8_t msg_buffer[60];
+uint16_t msg_size=1024;
+uint8_t msg_buffer[1024];
 uint32_t msg_TO=100;//time out in ms
 
+//GPS
+int NMEA_status=0;
 
 // LED
 uint8_t LED_Data[MAX_LED][4];
@@ -162,6 +164,17 @@ void WS2812_Send (void)
 	while (!datasentflag){};
 	datasentflag = 0;
 }
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
+	if(huart->Instance==USART1){
+		NMEA_status=1;
+		printf("Size=%d\r\n",Size);
+		printf((char*)(msg_buffer));
+	}
+
+	HAL_UARTEx_ReceiveToIdle_DMA(&huart1, msg_buffer, msg_size);
+	__HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -214,16 +227,20 @@ int main(void)
 	Set_LED(6, 47, 38, 77);
 
 	Set_LED(7, 255, 200, 0);
-
-
 	HAL_UARTEx_ReceiveToIdle_DMA(&huart1, msg_buffer, msg_size);
+while(1){
+
+	HAL_Delay(msg_TO);
+
+}
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1)
 	{
-		msg_size=sprintf((char*) (msg_buffer),"%d \r\n",toto);
+		msg_size=sprintf((char*) (msg_buffer),"%d \r\n",32);
 		HAL_UART_Transmit(&huart2, msg_buffer, msg_size, msg_TO);
 		printf("tit %d \r\n",32);
 		for (int i=0; i<46; i++)

@@ -1,0 +1,10 @@
+23:21:56 **** Incremental Build of configuration Debug for project splashnic_sandbox ****
+make -j8 all 
+arm-none-eabi-size   splashnic_sandbox.elf 
+   text	   data	    bss	    dec	    hex	filename
+  27344	    128	   3960	  31432	   7ac8	splashnic_sandbox.elf
+Finished building: default.size.stdout
+ 
+
+23:21:56 Build Finished. 0 errors, 0 warnings. (took 441ms)
+

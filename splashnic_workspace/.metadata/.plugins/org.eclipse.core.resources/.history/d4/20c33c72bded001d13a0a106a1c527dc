@@ -1,0 +1,12 @@
+/*
+ * PA1616S.cpp
+ *
+ *  Created on: 6 mai 2023
+ *      Author: damien.lucas
+ */
+#include "PA1616S.h"
+
+
+void treat_NMEA(){
+
+}

@@ -1,0 +1,15 @@
+
+
+#ifndef __PA1616S_H
+#define __PA1616S_H
+
+#include "stm32g4xx_hal.h"
+#define toto 32
+
+extern uint16_t RX_GPS_frame_size;
+extern uint8_t RX_GPS_buffer[256];
+
+void treat_NMEA();
+
+
+#endif /* __PA1616S_H */

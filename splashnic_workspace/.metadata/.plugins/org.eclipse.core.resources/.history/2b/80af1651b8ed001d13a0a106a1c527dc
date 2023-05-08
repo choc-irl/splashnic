@@ -1,0 +1,8 @@
+#include "main.h"
+
+
+#define toto 32
+
+uint16_t RX_GPS_frame =256;
+uint8_t RX_GPS_buffer[256];
+

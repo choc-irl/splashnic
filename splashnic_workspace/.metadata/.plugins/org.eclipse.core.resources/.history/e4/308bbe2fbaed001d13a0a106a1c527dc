@@ -1,0 +1,14 @@
+
+
+#ifndef PA1616S
+#define PA1616S
+//#include "main.h"
+#define toto 32
+
+//uint16_t RX_GPS_frame_size=256;
+uint8_t RX_GPS_buffer[256];
+
+void treat_NMEA();
+
+
+#endif /* PA1616S */
